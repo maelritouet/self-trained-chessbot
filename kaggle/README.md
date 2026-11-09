@@ -24,3 +24,14 @@ kaggle/fetch_outputs.sh base
 
 Resume (run longer than one 12 h session): `kaggle/run.sh --name base --resume` attaches
 the previous version's output and continues from its `ckpt.pt`. Not yet tried on Kaggle.
+
+## What the first run showed (2026-11-09, `--name test --hours 0.5`, 20k-game sample)
+
+- The session got a Tesla T4 (15 GB); the notebook cloned the pushed commit, installed it, and
+  found the dataset at `/kaggle/input/datasets/maelrit/chessgpt-data` (newer Kaggle mount path;
+  the notebook searches for `meta.json` instead of hard-coding it).
+- The 30-step smoke test passed with fp16 on: val loss 3.695 → 2.088, no NaN.
+- Throughput for the 10.7M-parameter `base.yaml`: ~100k tokens/s including evaluations
+  (500 iterations of 32,768 tokens in ~163 s), so ~4B tokens per 11 h session.
+- `--max-hours` stopped the run at iteration 5,501 and saved `ckpt.pt` before the session ended.
+- The live log stream (`kernels logs --follow`) dropped once; `kernels status` kept working.

@@ -1,5 +1,5 @@
 # Data pipeline config: download_lichess.py and build_dataset.py.
-# Values marked DECISION are placeholders until a decision is logged in docs/decisions/.
+# Every value below was decided on 2026-11-09; the reasons are in docs/decisions/001-007.
 
 # Lichess monthly dump, "YYYY-MM", or "latest" = most recent complete month on database.lichess.org
 month: latest

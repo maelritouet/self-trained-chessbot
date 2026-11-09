@@ -5,7 +5,7 @@ ONNX Runtime Web and chess.js loaded from jsDelivr at pinned versions.
 
 | File | Role | Tested by |
 |------|------|-----------|
-| `js/player.js` | JS port of `chessgpt/player.py`'s `choose_move` (prompt, sampling, exact-SAN legality, retries, top-k scoring) | `test/player.test.mjs`, incl. parity with Python on `test/fixtures/` |
+| `js/player.js` | JS port of `chessgpt/player.py`'s `choose_move` (prompt, sampling, exact-SAN legality, retries, top-k scoring, `onEvent` progress hook) | `test/player.test.mjs`, incl. parity with Python on `test/fixtures/` |
 | `js/game.js` | Game state: turns, legal targets, promotion, end of game, fallback move | `test/game.test.mjs` |
 | `js/app.js` | DOM wiring: board, controls, model loading, the "pen" strip | by playing it (see below) |
 | `index.html`, `css/style.css` | The page | |
@@ -50,10 +50,16 @@ python -m chessgpt.train --config web/test/fixtures/tiny.yaml --data data/proces
 python scripts/make_parity_fixtures.py runs/parity-tiny/best.pt
 ```
 
+## Checked so far
+
+28 Node tests pass (16 for the player, incl. parity with Python on 14 positions; 12 for the game
+state). The page was played in headless Chromium (Playwright): a 25-move game with the 30-minute
+test model, no console errors, illegal attempts crossed out, two fallback moves marked `*`.
+
 ## Known limits (for W6)
 
-- Speed: every legal move is scored over the whole prompt, with no cache between calls, so
-  a move takes ~0.1 s in the opening and a few seconds late in a game on CPU (WASM).
+- Speed: every legal move is scored over the whole prompt, with no cache between calls.
+  Measured in Chromium (single-threaded WASM): 0.1–0.6 s per reply up to move 11, then 1.4–9 s.
 - Size: the fp32 model is ~50 MB; fp16 or int8 quantisation would cut it 2-4×.
 - Multi-threaded WASM needs cross-origin isolation headers, which GitHub Pages can't set, so
   it runs single-threaded there.
