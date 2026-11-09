@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Data — never in git
+data/raw/
+data/processed/
+*.bin
+*.zst
+*.pgn
+
+# Training outputs
+checkpoints/
+runs/
+out/
+*.pt
+*.ckpt
+*.onnx
+
+# Local tools (e.g. Stockfish binary)
+tools/
+
+# Secrets
+kaggle.json
+.env
+
+# Editor / tooling
+.vscode/
+.idea/
+.remember/

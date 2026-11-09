@@ -1,0 +1,28 @@
+# Model + training hyperparameters. PLACEHOLDERS: tuned in W2/W3.
+# Rough parameter count for a GPT: ~12 * n_layer * n_embd^2 (+ small embedding terms).
+# 6 * 12 * 384^2 ≈ 10.6M.
+
+model:
+  vocab_size: null        # filled in from meta.json at train time
+  block_size: 1024        # context length in characters
+  n_layer: 6
+  n_head: 6
+  n_embd: 384
+  dropout: 0.0
+
+train:
+  batch_size: 32
+  grad_accum_steps: 1
+  max_iters: 20000
+  lr: 6.0e-4
+  min_lr: 6.0e-5
+  warmup_iters: 500
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  eval_interval: 500
+  eval_iters: 100
+  ckpt_interval: 1000
+  fp16: true              # autocast + GradScaler on GPU (Kaggle P100)
+  seed: 1337
