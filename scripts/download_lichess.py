@@ -34,6 +34,8 @@ import yaml
 import zstandard
 from tqdm import tqdm
 
+from chessgpt.movetext import format_movetext
+
 LIST_URL = "https://database.lichess.org/standard/list.txt"
 MONTH_URL = "https://database.lichess.org/standard/lichess_db_standard_rated_{month}.pgn.zst"
 
@@ -72,14 +74,6 @@ def extract_sans(raw_movetext: str) -> list[str]:
         if tok:
             sans.append(tok)
     return sans
-
-
-def format_movetext(sans: list[str]) -> str:
-    """Format SAN moves as '1.e4 e5 2.Nf3 Nc6' (no space after the dot)."""
-    parts = []
-    for i, san in enumerate(sans):
-        parts.append(f"{i // 2 + 1}.{san}" if i % 2 == 0 else san)
-    return " ".join(parts)
 
 
 def normalise_movetext(
