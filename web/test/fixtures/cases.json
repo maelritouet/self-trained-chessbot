@@ -1113,8 +1113,12 @@
     "Bf6"
    ],
    "result_prefix": "0-1",
-   "san": "Ne5",
-   "illegal_tries": [],
+   "san": null,
+   "illegal_tries": [
+    "Nxe5",
+    "Nxe5",
+    "Nxe5"
+   ],
    "candidates": [
     [
      "Be3",
