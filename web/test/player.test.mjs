@@ -108,6 +108,22 @@ for (const [bad, why] of [["Nxf3", "phantom capture"], ["Nf3+", "phantom check"]
   });
 }
 
+test("onEvent reports the scores, then each typed character and each try, in order", async () => {
+  const events = [];
+  const runModel = oracleRunner("\n1-0 1.e4 e5 2.Nf6 ");
+  const c = await chooseMove({ ...base, runModel, moves: ["e4", "e5"], resultPrefix: "1-0", temperature: 0,
+                               maxRetries: 1, onEvent: (e) => events.push(e) });
+  assert.equal(events[0].type, "scored");
+  assert.deepEqual(events[0].candidates, c.candidates);
+  assert.equal(events[0].legalMass, c.legalMass);
+  const rest = events.slice(1).map(({ type, attempt, text, legal }) => (type === "try" ? { type, attempt, text, legal } : { type, attempt, text }));
+  const attempt = (n) => [
+    { type: "char", attempt: n, text: "N" }, { type: "char", attempt: n, text: "Nf" }, { type: "char", attempt: n, text: "Nf6" },
+    { type: "try", attempt: n, text: "Nf6", legal: false },
+  ];
+  assert.deepEqual(rest, [...attempt(0), ...attempt(1)]);
+});
+
 test("sampling with the same seeded rng is reproducible", async () => {
   const args = { ...base, runModel: uniformRunner, moves: ["e4"], temperature: 1, maxRetries: 3 };
   const a = await chooseMove({ ...args, rng: seededRng(7) });
