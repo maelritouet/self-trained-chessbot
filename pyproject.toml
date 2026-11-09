@@ -16,7 +16,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = [
+    "kaggle>=2.2.5",
+    "pytest",
+    "six>=1.17.0",  # kaggle 2.2.5 imports six without declaring it
+]
 
 [build-system]
 requires = ["hatchling"]
