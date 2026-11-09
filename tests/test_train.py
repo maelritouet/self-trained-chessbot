@@ -128,15 +128,17 @@ def test_grad_accumulation_matches_one_big_batch(data_dir):
 
 # --- full loop ------------------------------------------------------------------------------
 def test_training_run_reduces_val_loss_and_writes_outputs(data_dir, tmp_path):
+    # 120 iterations: with 40 the cosine schedule reaches min_lr while val loss is
+    # still ~1.75 (measured), so "halve the loss" needs a longer run, not a looser bar.
     out = tmp_path / "run"
-    summary = train(tiny_cfg(), data_dir, out)
+    summary = train(tiny_cfg(max_iters=120, eval_interval=30, ckpt_interval=30), data_dir, out)
 
     rows = read_log(out)
-    assert [int(r["iter"]) for r in rows] == [0, 10, 20, 30, 40]
+    assert [int(r["iter"]) for r in rows] == [0, 30, 60, 90, 120]
     assert float(rows[-1]["val_loss"]) < 0.5 * float(rows[0]["val_loss"])
-    assert int(rows[-1]["tokens_seen"]) == 40 * 4 * 16   # iters * batch * block
+    assert int(rows[-1]["tokens_seen"]) == 120 * 4 * 16   # iters * batch * block
     assert (out / "ckpt.pt").exists() and (out / "best.pt").exists()
-    assert summary["iter"] == 40
+    assert summary["iter"] == 120
 
 
 def test_resume_is_identical_to_uninterrupted_run(data_dir, tmp_path):
