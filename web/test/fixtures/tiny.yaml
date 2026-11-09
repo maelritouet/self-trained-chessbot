@@ -1,0 +1,25 @@
+# Tiny model used only for the JS-vs-Python parity fixtures (web/test/fixtures/).
+# Rebuild: see scripts/make_parity_fixtures.py.
+model:
+  vocab_size: null
+  block_size: 128
+  n_layer: 2
+  n_head: 2
+  n_embd: 64
+  dropout: 0.0
+train:
+  batch_size: 32
+  grad_accum_steps: 1
+  max_iters: 1500
+  lr: 3.0e-3
+  min_lr: 3.0e-4
+  warmup_iters: 100
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  eval_interval: 500
+  eval_iters: 10
+  ckpt_interval: 1500
+  fp16: false
+  seed: 1337
