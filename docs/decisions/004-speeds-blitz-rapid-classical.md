@@ -28,3 +28,8 @@ make collection impractically slow. Bullet's move quality is too poor to be wort
 - The dataset is mostly blitz (~80%), so the model mostly imitates blitz-quality play.
 - The mix was measured at the 1500 floor; with `min_elo: 1800` (003), re-check it in
   `games.stats.json` after the full download.
+
+## Follow-up (2026-11-09)
+At the 1800 floor (1.79M games): blitz 82.0%, rapid 17.4%, classical 0.6%, so the mix shifted
+slightly further toward blitz than in the 1500 sample (79 / 20 / <1). Results: 1-0 49.0%,
+0-1 45.2%, draws 5.8%.

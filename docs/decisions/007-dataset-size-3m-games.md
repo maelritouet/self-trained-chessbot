@@ -37,3 +37,9 @@ began. It is already downloading, so it costs no extra time, and a 1.2 GB upload
   month (e.g. 2026-09) with the same filters, appended before rebuilding.
 - The 18-pass overfitting point was measured on a tiny dataset; on 1.2B tokens the safe number of
   passes may differ. Watch the train/val gap in `log.csv`.
+
+## Follow-up (2026-11-09)
+A dry-run build on the first 1.79M games gave 744M train tokens at 419.9 characters per game,
+so 3M games ≈ 1.26B tokens (slightly above the 1.2B estimate). The vocabulary stayed the same
+33 characters as the 20k sample, and the build took 46 s (1000/1000 games replayed legally).
+The first download was cut at 1.79M games by a PC crash and restarted detached.

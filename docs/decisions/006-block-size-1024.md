@@ -32,3 +32,8 @@ dropped. A shorter context would save compute but cut off ten times as many game
 - Training windows start at random offsets, so the model also learns from mid-game windows that
   don't begin at a game start; this is normal nanoGPT-style training.
 - Re-check the length distribution on the 1800 dataset (003).
+
+## Follow-up (2026-11-09)
+At the 1800 floor (1.79M games): median 392 characters, 90th percentile 673, 99th percentile 937,
+mean 419.9; 4.56% exceed 768, **0.50% exceed 1,024** (vs 0.40% in the sample), 0.01% exceed
+2,048. The decision holds: 99.5% of games fit the context.
