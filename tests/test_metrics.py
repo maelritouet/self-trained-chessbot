@@ -165,8 +165,11 @@ def test_score_vs_engine_counts_from_the_models_side():
 
 
 def test_forfeits_count_as_losses_and_are_reported():
-    s = score_vs_engine(["1-0", "0-1"], ["white", "white"], forfeits=[False, True])
+    # The forfeited game's result string says the model (White) won: the forfeit must
+    # override it. (A forfeit on a game already lost would not test the rule at all.)
+    s = score_vs_engine(["1-0", "1-0"], ["white", "white"], forfeits=[False, True])
     assert (s["wins"], s["losses"], s["forfeits"]) == (1, 1, 1)
+    assert s["score"] == 0.5
 
 
 def test_score_vs_engine_rejects_bad_input():
