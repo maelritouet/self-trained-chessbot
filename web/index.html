@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-trained chessbot</title>
+  <meta name="description" content="Play a small transformer that learned chess only by reading game records. It writes its moves one character at a time.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="layout">
+    <header class="masthead">
+      <h1>Self-trained chessbot</h1>
+      <p class="lede">A small transformer that learned chess only by reading game records, one character at a time. Nobody told it the rules: every move it plays, it writes.</p>
+    </header>
+
+    <section class="board-area" aria-label="Chessboard">
+      <div class="board-frame">
+        <div id="board" class="board" role="group" aria-label="Chessboard squares"></div>
+        <div id="promotion" class="promotion" hidden>
+          <p>Promote to</p>
+          <div class="promotion-choices"></div>
+        </div>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite">Loading the model…</p>
+    </section>
+
+    <aside class="sheet" aria-label="Game and model">
+      <div class="controls">
+        <div class="segmented" role="radiogroup" aria-label="Play as">
+          <button type="button" role="radio" aria-checked="true" data-color="w">Play White</button>
+          <button type="button" role="radio" aria-checked="false" data-color="b">Play Black</button>
+        </div>
+        <button type="button" id="new-game" class="button">New game</button>
+      </div>
+
+      <div class="controls">
+        <label class="field" id="model-field" hidden>
+          <span>Model</span>
+          <select id="model-select"></select>
+        </label>
+        <label class="field slider">
+          <span>Temperature <output id="temp-value" for="temperature">0.7</output></span>
+          <input id="temperature" type="range" min="0" max="1.5" step="0.1" value="0.7"
+                 aria-describedby="temp-help">
+          <small id="temp-help">0 always plays its favourite move; higher values take more risks.</small>
+        </label>
+      </div>
+
+      <section class="pen" aria-labelledby="pen-title">
+        <h2 id="pen-title">What it reads and writes</h2>
+        <p class="pen-strip" id="pen-strip" aria-live="off"><span class="pen-context" id="pen-context"></span><span class="pen-tries" id="pen-tries"></span><span class="pen-writing" id="pen-writing"></span><span class="caret" aria-hidden="true"></span></p>
+        <p class="pen-note" id="pen-note">Its moves appear here as it types them. Illegal attempts are crossed out and it tries again.</p>
+      </section>
+
+      <section class="candidates" aria-labelledby="cand-title">
+        <h2 id="cand-title">Its top five moves</h2>
+        <ol id="candidates" class="bars"></ol>
+        <p class="legal-mass" id="legal-mass"></p>
+      </section>
+
+      <section class="scoresheet" aria-labelledby="sheet-title">
+        <h2 id="sheet-title">Scoresheet</h2>
+        <table>
+          <thead><tr><th scope="col">#</th><th scope="col">White</th><th scope="col">Black</th></tr></thead>
+          <tbody id="moves"></tbody>
+        </table>
+        <p class="footnote" id="footnote" hidden>* The model wrote only illegal moves here, so its highest-scored legal move was played instead.</p>
+      </section>
+    </aside>
+  </main>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

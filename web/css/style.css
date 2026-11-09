@@ -1,0 +1,314 @@
+/* Self-trained chessbot: a tournament scoresheet beside a board.
+   The bot reads and writes notation, so the page is built around the scoresheet;
+   the one expressive element is the "pen" strip where it types its move. */
+
+:root {
+  --paper: #e9eeec;        /* form paper */
+  --paper-raised: #f4f7f5;
+  --rule: #b7c6c1;         /* ruled lines */
+  --ink: #1f2a44;          /* navy ink */
+  --ink-soft: #4b5872;
+  --ink-faint: #6f7a8f;
+  --correction: #b3261e;   /* red pen: crossed-out attempts */
+  --highlighter: #f2d35b;  /* the chosen move */
+  --sq-light: #dce4de;
+  --sq-dark: #7e9c93;
+  --sq-last: rgba(242, 211, 91, 0.55);
+  --sq-selected: rgba(31, 42, 68, 0.22);
+  --piece-white-fill: #fbfcfb;
+  --piece-black-fill: #1f2a44;
+  --focus: #1f5fbf;
+
+  --font-ui: "Chivo", system-ui, sans-serif;
+  --font-text: "JetBrains Mono", ui-monospace, monospace;
+  --font-pieces: "Noto Sans Symbols 2", "Segoe UI Symbol", serif;
+
+  --step--1: 0.833rem;
+  --step-0: 1rem;
+  --step-1: 1.2rem;
+  --step-2: 1.728rem;
+  --step-3: 2.488rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #18201e;
+    --paper-raised: #202a27;
+    --rule: #3a4a45;
+    --ink: #e6ecea;
+    --ink-soft: #b4c0bc;
+    --ink-faint: #8a9894;
+    --correction: #f07167;
+    --highlighter: #c9a93a;
+    --sq-light: #b9c7bf;
+    --sq-dark: #5f7d74;
+    --sq-last: rgba(201, 169, 58, 0.6);
+    --sq-selected: rgba(10, 16, 28, 0.3);
+    --piece-black-fill: #16203a;
+    --focus: #7fb0ff;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* The hidden attribute must win over component display rules (.field is display: grid). */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  line-height: 1.5;
+}
+
+h1, h2, p { margin: 0; }
+
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* --- layout ----------------------------------------------------------------------------------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(0, 7fr) minmax(20rem, 5fr);
+    grid-template-areas: "head head" "board sheet";
+    column-gap: 3rem;
+    padding: 2.5rem 2rem 4rem;
+  }
+  .masthead { grid-area: head; }
+  .board-area { grid-area: board; }
+  .sheet { grid-area: sheet; }
+}
+
+.masthead h1 {
+  font-size: var(--step-3);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.lede {
+  margin-top: 0.6rem;
+  max-width: 38em;
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  line-height: 1.45;
+}
+
+/* --- board ------------------------------------------------------------------------------------- */
+.board-frame { position: relative; width: min(100%, 36rem); }
+
+.board {
+  container-type: inline-size; /* pieces scale with the board, not the viewport */
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  user-select: none;
+}
+
+.square {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: default;
+  background: var(--sq-light);
+}
+.square.dark { background: var(--sq-dark); }
+.square.last::before, .square.selected::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sq-last);
+}
+.square.selected::before { background: var(--sq-selected); }
+.square.movable, .square.target { cursor: pointer; }
+.square.target::after {
+  content: "";
+  position: absolute;
+  width: 28%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(31, 42, 68, 0.35);
+}
+.square.target.occupied::after {
+  width: 92%;
+  background: transparent;
+  border: 4px solid rgba(31, 42, 68, 0.35);
+}
+
+.piece {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-pieces);
+  font-size: 10.5cqi; /* about 84% of a square */
+  line-height: 1;
+  pointer-events: none;
+}
+.piece.w { color: var(--piece-white-fill); -webkit-text-stroke: 1.5px #1f2a44; paint-order: stroke fill; }
+.piece.b { color: var(--piece-black-fill); }
+
+.coord {
+  position: absolute;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.coord.file { right: 4px; bottom: 3px; }
+.coord.rank { left: 4px; top: 4px; }
+
+.promotion {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  background: rgba(233, 238, 236, 0.92);
+  text-align: center;
+  font-weight: 600;
+}
+.promotion[hidden] { display: none; }
+.promotion-choices { display: flex; gap: 0.5rem; }
+.promotion-choices button {
+  width: 4rem;
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+.status {
+  margin-top: 0.9rem;
+  font-size: var(--step-1);
+  font-weight: 600;
+  min-height: 1.5em;
+}
+
+/* --- right column: the scoresheet ---------------------------------------------------------------- */
+.sheet { display: grid; gap: 1.75rem; align-content: start; }
+
+.sheet h2 {
+  font-size: var(--step-0);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.controls { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: end; }
+
+.segmented { display: inline-flex; border: 2px solid var(--ink); }
+.segmented button, .button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.segmented button + button { border-left: 2px solid var(--ink); }
+.segmented button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.button { border: 2px solid var(--ink); }
+.button:hover, .segmented button:hover { text-decoration: underline; }
+
+.field { display: grid; gap: 0.25rem; font-weight: 600; }
+.field select { font: inherit; padding: 0.35rem 0.5rem; border: 2px solid var(--ink); background: var(--paper-raised); color: var(--ink); }
+.field small { font-weight: 400; color: var(--ink-faint); font-size: var(--step--1); max-width: 22em; }
+.slider { flex: 1 1 14rem; }
+.slider input { width: 100%; accent-color: var(--ink); }
+.slider output { font-family: var(--font-text); font-weight: 500; }
+
+/* The pen: the expressive element. A ruled line where the model's characters appear. */
+.pen-strip {
+  min-height: 3.6rem;
+  padding: 0.7rem 0.9rem 0.7rem 2.6rem;
+  /* Ruled paper: a thin red margin line set in from the edge, horizontal rules behind the text. */
+  background:
+    linear-gradient(to right, transparent 1.8rem, var(--correction) 1.8rem, var(--correction) calc(1.8rem + 1px), transparent calc(1.8rem + 1px)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(1.7em - 1px), var(--rule) calc(1.7em - 1px) 1.7em),
+    var(--paper-raised);
+  font-family: var(--font-text);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.pen-context { color: var(--ink-faint); }
+.pen-tries s {
+  color: var(--correction);
+  text-decoration-thickness: 2px;
+  margin-right: 0.6ch;
+}
+.pen-writing { color: var(--ink); font-weight: 500; }
+.pen-writing.played { background: var(--highlighter); color: #1f2a44; }
+.caret {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--ink);
+  visibility: hidden;
+}
+.pen.writing .caret { visibility: visible; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.pen-note { margin-top: 0.5rem; color: var(--ink-faint); font-size: var(--step--1); }
+
+/* Candidate bars: one series, text in ink, the played move marked with the highlighter. */
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.bar {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-text);
+  font-size: 0.95rem;
+}
+.bar-track { display: block; height: 0.75rem; background: var(--rule); }
+.bar-fill { display: block; height: 100%; background: var(--ink-soft); }
+.bar.played .bar-fill { background: var(--ink); }
+.bar.played .bar-san { background: var(--highlighter); color: #1f2a44; padding: 0 0.25rem; justify-self: start; }
+.bar-pct { text-align: right; color: var(--ink-soft); }
+.bar.outside { margin-top: 0.35rem; padding-top: 0.45rem; border-top: 1px dashed var(--rule); }
+.bar-rank { grid-column: 1 / -1; color: var(--ink-faint); font-family: var(--font-ui); font-size: var(--step--1); }
+.legal-mass { margin-top: 0.6rem; color: var(--ink-faint); font-size: var(--step--1); }
+
+/* Scoresheet table: ruled like a paper form. */
+.scoresheet table { width: 100%; border-collapse: collapse; font-size: var(--step-0); }
+.scoresheet th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-bottom: 2px solid var(--ink);
+  padding: 0.2rem 0.5rem;
+}
+.scoresheet td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-text);
+}
+.scoresheet td:first-child, .scoresheet th:first-child { width: 2.5rem; color: var(--ink-faint); }
+.scoresheet .bot { color: var(--ink); }
+.scoresheet .human { color: var(--ink-soft); }
+.scoresheet tbody { display: block; max-height: 16rem; overflow-y: auto; }
+.scoresheet thead, .scoresheet tbody tr { display: table; width: 100%; table-layout: fixed; }
+.footnote { margin-top: 0.5rem; color: var(--ink-faint); font-size: var(--step--1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pen.writing .caret { animation: none; }
+}
