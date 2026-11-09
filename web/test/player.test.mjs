@@ -99,6 +99,15 @@ test("illegal output is retried, then null with every try recorded", async () =>
   assert.deepEqual(c.illegalTries, ["Nf6", "Nf6", "Nf6"]);
 });
 
+for (const [bad, why] of [["Nxf3", "phantom capture"], ["Nf3+", "phantom check"], ["Ng1f3", "long algebraic"], ["--", "null move"]]) {
+  test(`only exact SAN is legal: ${bad} (${why}) is rejected`, async () => {
+    const runModel = oracleRunner(`\n1-0 1.e4 e5 2.${bad} `);
+    const c = await chooseMove({ ...base, runModel, moves: ["e4", "e5"], resultPrefix: "1-0", temperature: 0, maxRetries: 0 });
+    assert.equal(c.san, null);
+    assert.deepEqual(c.illegalTries, [bad]);
+  });
+}
+
 test("sampling with the same seeded rng is reproducible", async () => {
   const args = { ...base, runModel: uniformRunner, moves: ["e4"], temperature: 1, maxRetries: 3 };
   const a = await chooseMove({ ...args, rng: seededRng(7) });
@@ -110,6 +119,14 @@ test("sampling with the same seeded rng is reproducible", async () => {
 test("a finished game is rejected", async () => {
   const moves = ["f3", "e5", "g4", "Qh4#"];
   await assert.rejects(chooseMove({ ...base, runModel: uniformRunner, moves }), /game is already over/);
+});
+
+test("a claimable draw (threefold repetition) is not game over, as in python-chess", async () => {
+  const moves = ["Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8"];
+  const board = new Chess(); moves.forEach((m) => board.move(m));
+  assert.ok(board.isThreefoldRepetition(), "test setup: position repeated three times");
+  const c = await chooseMove({ ...base, runModel: uniformRunner, moves, temperature: 0, maxRetries: 0 });
+  assert.equal(c.candidates.length, 5);
 });
 
 test("prompts longer than blockSize are cropped to the last blockSize tokens", async () => {
