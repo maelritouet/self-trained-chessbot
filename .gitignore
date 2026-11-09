@@ -8,6 +8,7 @@ __pycache__/
 # Data — never in git
 data/raw/
 data/processed/
+data/processed_dryrun/
 *.bin
 *.zst
 *.pgn
