@@ -7,14 +7,15 @@ month: latest
 # Stop streaming once this many games pass the filters. DECISION: target number of games.
 max_games: 2000000
 
-# Both WhiteElo and BlackElo must be >= min_elo. DECISION: rating floor.
-min_elo: 1500
+# Both WhiteElo and BlackElo must be >= min_elo. Decided 2026-11-09: 1800.
+min_elo: 1800
 
 # Time controls kept, matched against the PGN Event header ("Rated Blitz game" -> blitz).
-# DECISION: speeds kept.
+# Decided 2026-11-09: blitz + rapid + classical (no bullet).
 speeds: [blitz, rapid, classical]
 
-# Games with fewer half-moves than this are dropped.
+# Games with fewer half-moves than this are dropped. Unfinished games (Result "*") are
+# always dropped (decided 2026-11-09): the result-first format needs a real result.
 min_plies: 10
 
 # Termination header values that get a game dropped.

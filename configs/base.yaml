@@ -4,7 +4,7 @@
 
 model:
   vocab_size: null        # filled in from meta.json at train time
-  block_size: 1024        # context length in characters
+  block_size: 1024        # context length in characters (decided 2026-11-09: 99.6% of games fit)
   n_layer: 6
   n_head: 6
   n_embd: 384
