@@ -74,7 +74,7 @@ function logSumExp(values) {
 const crop = (ids, blockSize) => ids.slice(-blockSize); // keep the most recent tokens
 
 /** Sample characters until a boundary token; return them (without the boundary). */
-async function sampleMoveString(runModel, tok, promptIds, temperature, boundaryIds, blockSize, rng) {
+async function sampleMoveString(runModel, tok, promptIds, temperature, boundaryIds, blockSize, rng, onChar = () => {}) {
   const ids = [...promptIds];
   const out = [];
   for (let step = 0; step < MAX_MOVE_CHARS; step++) {
@@ -98,6 +98,7 @@ async function sampleMoveString(runModel, tok, promptIds, temperature, boundaryI
     if (boundaryIds.has(next)) break;
     out.push(next);
     ids.push(next);
+    onChar(tok.decode(out));
   }
   return tok.decode(out);
 }
@@ -140,10 +141,13 @@ function legalSan(board, text) {
  *                    illegalTries: string[], legalMass: number}>}
  *   san is null if every try was illegal; the caller decides what to do then.
  *   Candidates are scored at temperature 1 (the model's actual distribution).
+ *   onEvent (optional) receives, in order: {type: "scored", candidates, legalMass}, then per try
+ *   {type: "char", attempt, text} for each character typed and {type: "try", attempt, text, legal}.
+ *   The web page uses it to show the model writing its move.
  */
 export async function chooseMove({
   runModel, tokenizer, Chess, moves, temperature = 1.0, maxRetries = 5, resultPrefix = null,
-  topK = 5, delimiter = "\n", blockSize, rng = Math.random,
+  topK = 5, delimiter = "\n", blockSize, rng = Math.random, onEvent = () => {},
 }) {
   if (!blockSize) throw new Error("blockSize is required (meta.json block_size)");
   const board = new Chess();
@@ -165,9 +169,12 @@ export async function chooseMove({
     illegalTries: [],
     legalMass: all.reduce((s, c) => s + c.prob, 0),
   };
+  onEvent({ type: "scored", candidates: choice.candidates, legalMass: choice.legalMass });
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const text = await sampleMoveString(runModel, tokenizer, promptIds, temperature, boundaryIds, blockSize, rng);
+    const onChar = (text) => onEvent({ type: "char", attempt, text });
+    const text = await sampleMoveString(runModel, tokenizer, promptIds, temperature, boundaryIds, blockSize, rng, onChar);
     const san = legalSan(board, text);
+    onEvent({ type: "try", attempt, text, legal: san !== null });
     if (san === null) {
       choice.illegalTries.push(text);
       continue;
