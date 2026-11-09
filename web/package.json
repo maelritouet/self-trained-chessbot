@@ -1,0 +1,13 @@
+{
+  "name": "chessgpt-web",
+  "private": true,
+  "type": "module",
+  "description": "Browser demo for chessgpt. No build step: the page loads ES modules directly; these devDependencies are only for the Node tests.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "chess.js": "1.4.0",
+    "onnxruntime-node": "1.31.1"
+  }
+}
