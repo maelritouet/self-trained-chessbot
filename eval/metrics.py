@@ -8,8 +8,9 @@ Definitions, and why:
 - Positions: every position of held-out games (val split), teacher-forced: the prompt holds
   the real move history and the game's real result as prefix, exactly as in training, so the
   metric measures the model, not a distribution shift in the prompt.
-- Legal-move rate: fraction of positions where the FIRST greedy output (temperature 0) parses
-  as a legal move with python-chess. Strict (no retries) and deterministic (no sampling noise),
+- Legal-move rate: fraction of positions where the FIRST greedy output (temperature 0) is
+  exactly the SAN of a legal move (strict: python-chess's lenient parse_san would accept
+  phantom captures/checks and "--"; exact match is also what the JS port does). Strict (no retries) and deterministic (no sampling noise),
   so two checkpoints can be compared on identical positions.
 - Legal rate by move number: same, bucketed by full-move number (1-10, 11-20, ...), keyed by
   the bucket's first move. Long games are rare, so late buckets can be filtered by min_count.
@@ -39,7 +40,7 @@ import chess
 import torch
 
 from chessgpt.movetext import RESULTS, parse_movetext
-from chessgpt.player import build_prompt, replay, sample_move_string
+from chessgpt.player import build_prompt, legal_move_from_text, replay, sample_move_string
 from chessgpt.tokenizer import CharTokenizer
 
 
@@ -66,10 +67,8 @@ def _boundary_ids(tokenizer: CharTokenizer, delimiter: str) -> set[int]:
 
 
 def _parse(board: chess.Board, text: str) -> chess.Move | None:
-    try:
-        return board.parse_san(text)
-    except ValueError:  # illegal, ambiguous, or not SAN (incl. empty)
-        return None
+    # Strict: exact SAN of a legal move (see chessgpt.player.legal_move_from_text).
+    return legal_move_from_text(board, text)
 
 
 # --- generation --------------------------------------------------------------------------------

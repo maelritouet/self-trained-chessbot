@@ -9,7 +9,8 @@ How a move is chosen:
   1. Build the prompt exactly like a training game: "\n" + "1-0 " + "1.e4 e5 2."
      (delimiter, optional result prefix, movetext so far, next move number if white).
   2. Sample characters at `temperature` until a move boundary (space or delimiter).
-  3. Check the sampled SAN with python-chess. Illegal or unparsable -> record it and
+  3. Check the sampled text is exactly the SAN of a legal move (legal_move_from_text).
+     Anything else -> record it and
      resample, up to max_retries extra tries.
   4. Separately, score every legal move: P(move) = product of P(char) over its
      characters, times P(boundary after it). Return the top-k as candidates.
@@ -64,6 +65,21 @@ def build_prompt(board_moves: list[str], result_prefix: str | None, delimiter: s
     if len(board_moves) % 2 == 0:  # white to move: next token is the move number
         prompt += f"{len(board_moves) // 2 + 1}."
     return prompt
+
+
+def legal_move_from_text(board: chess.Board, text: str) -> chess.Move | None:
+    """The legal move whose SAN is exactly `text`, else None.
+
+    Strict on purpose: python-chess's parse_san is lenient (it accepts phantom captures
+    like "Nxf3" for Nf3, missing or extra check marks, long algebraic, and "--" as a null
+    move). Exact matching against the legal moves' SAN is the same rule in Python and in
+    the JS port (chess.js), and the model was trained on exact SAN, so a wrong "x", "+" or
+    "#" is a real mistake.
+    """
+    for move in board.legal_moves:
+        if board.san(move) == text:
+            return move
+    return None
 
 
 def replay(moves_so_far: list[str]) -> chess.Board:
@@ -196,12 +212,11 @@ def choose_move(
 
     for _ in range(1 + max_retries):
         s = sample_move_string(model, tokenizer, prompt_ids, temperature, boundary_ids, generator)
-        try:
-            move = board.parse_san(s)
-        except ValueError:  # illegal, ambiguous, or not SAN at all (incl. empty string)
+        move = legal_move_from_text(board, s)
+        if move is None:  # illegal, not exact SAN, or empty
             choice.illegal_tries.append(s)
             continue
-        choice.move, choice.san = move, board.san(move)
+        choice.move, choice.san = move, s
         break
     return choice
 
