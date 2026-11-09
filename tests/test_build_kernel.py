@@ -30,6 +30,14 @@ PARAMS = dict(
 )
 
 
+@pytest.fixture
+def template(tmp_path):
+    """A private copy of the real template, so no test can modify the repo file."""
+    t = tmp_path / "template.ipynb"
+    t.write_bytes(TEMPLATE.read_bytes())
+    return t
+
+
 def params(**overrides):
     return {**PARAMS, **overrides}
 
@@ -47,35 +55,35 @@ def param_cell_values(nb) -> dict:
     return {k: v for k, v in ns.items() if not k.startswith("__")}
 
 
-def test_parameters_cell_holds_the_given_values(tmp_path):
-    build_kernel(TEMPLATE, tmp_path, params(), user="someone")
-    assert param_cell_values(built_notebook(tmp_path)) == PARAMS
+def test_parameters_cell_holds_the_given_values(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(), user="someone")
+    assert param_cell_values(built_notebook(tmp_path / "out")) == PARAMS
 
 
-def test_string_values_with_quotes_survive(tmp_path):
-    build_kernel(TEMPLATE, tmp_path, params(RUN_NAME='it\'s "quoted"'), user="someone")
-    assert param_cell_values(built_notebook(tmp_path))["RUN_NAME"] == 'it\'s "quoted"'
+def test_string_values_with_quotes_survive(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(RUN_NAME='it\'s "quoted"'), user="someone")
+    assert param_cell_values(built_notebook(tmp_path / "out"))["RUN_NAME"] == 'it\'s "quoted"'
 
 
-def test_other_cells_are_unchanged(tmp_path):
-    build_kernel(TEMPLATE, tmp_path, params(), user="someone")
-    template = json.loads(TEMPLATE.read_text())
-    built = built_notebook(tmp_path)
-    assert len(built["cells"]) == len(template["cells"])
-    for t, b in zip(template["cells"], built["cells"]):
+def test_other_cells_are_unchanged(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(), user="someone")
+    original = json.loads(TEMPLATE.read_text())
+    built = built_notebook(tmp_path / "out")
+    assert len(built["cells"]) == len(original["cells"])
+    for t, b in zip(original["cells"], built["cells"]):
         if "parameters" not in t["metadata"].get("tags", []):
             assert t == b
 
 
-def test_template_file_is_not_modified(tmp_path):
-    before = TEMPLATE.read_bytes()
-    build_kernel(TEMPLATE, tmp_path, params(), user="someone")
-    assert TEMPLATE.read_bytes() == before
+def test_template_file_is_not_modified(template, tmp_path):
+    before = template.read_bytes()
+    build_kernel(template, tmp_path / "out", params(RUN_NAME="only-in-this-test"), user="someone")
+    assert template.read_bytes() == before
 
 
-def test_metadata_requests_private_gpu_notebook_with_dataset(tmp_path):
-    build_kernel(TEMPLATE, tmp_path, params(), user="someone")
-    meta = json.loads((tmp_path / "kernel-metadata.json").read_text())
+def test_metadata_requests_private_gpu_notebook_with_dataset(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(), user="someone")
+    meta = json.loads((tmp_path / "out" / "kernel-metadata.json").read_text())
     assert meta["id"] == "someone/chessgpt-train"
     assert meta["code_file"] == "train_kaggle.ipynb"
     assert meta["kernel_type"] == "notebook"
@@ -88,24 +96,24 @@ def test_metadata_requests_private_gpu_notebook_with_dataset(tmp_path):
     assert meta["kernel_sources"] == []
 
 
-def test_resume_attaches_previous_output_of_the_same_kernel(tmp_path):
-    build_kernel(TEMPLATE, tmp_path, params(RESUME=True), user="someone")
-    meta = json.loads((tmp_path / "kernel-metadata.json").read_text())
+def test_resume_attaches_previous_output_of_the_same_kernel(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(RESUME=True), user="someone")
+    meta = json.loads((tmp_path / "out" / "kernel-metadata.json").read_text())
     assert meta["kernel_sources"] == ["someone/chessgpt-train"]
 
 
-def test_unknown_or_missing_parameter_is_rejected(tmp_path):
+def test_unknown_or_missing_parameter_is_rejected(template, tmp_path):
     with pytest.raises(ValueError):
-        build_kernel(TEMPLATE, tmp_path, params(TYPO=1), user="someone")
+        build_kernel(template, tmp_path / "out", params(TYPO=1), user="someone")
     missing = params()
     del missing["GIT_REF"]
     with pytest.raises(ValueError):
-        build_kernel(TEMPLATE, tmp_path, missing, user="someone")
+        build_kernel(template, tmp_path / "out", missing, user="someone")
 
 
-def test_max_hours_must_leave_margin_under_kaggle_12h_limit(tmp_path):
+def test_max_hours_must_leave_margin_under_kaggle_12h_limit(template, tmp_path):
     with pytest.raises(ValueError):
-        build_kernel(TEMPLATE, tmp_path, params(MAX_HOURS=11.75), user="someone")
+        build_kernel(template, tmp_path / "out", params(MAX_HOURS=11.75), user="someone")
 
 
 def test_template_without_parameters_cell_is_rejected(tmp_path):
