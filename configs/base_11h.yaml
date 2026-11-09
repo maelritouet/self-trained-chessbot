@@ -1,0 +1,35 @@
+# First real run: base.yaml's model and hyperparameters, sized for one full Kaggle session.
+# Decided 2026-11-09: use a full ~11 h T4 session.
+# Only the schedule length and the logging intervals differ from base.yaml, so this run is
+# comparable with the 30-minute test run.
+#
+# Budget: T4 ~100k tokens/s (measured incl. evals) -> 11 h ≈ 3.96B tokens.
+# 120,000 iterations x 32,768 tokens = 3.93B tokens ≈ 3.15 passes over the 1.25B-token
+# 3M-game dataset. Run with: kaggle/run.sh --config configs/base_11h.yaml --name base --hours 11
+# If the GPU is slower than measured, --max-hours stops the run with a checkpoint before the
+# cosine schedule ends; it can be resumed (kaggle/run.sh ... --resume).
+
+model:
+  vocab_size: null        # filled in from meta.json at train time
+  block_size: 1024
+  n_layer: 6
+  n_head: 6
+  n_embd: 384
+  dropout: 0.0
+
+train:
+  batch_size: 32
+  grad_accum_steps: 1
+  max_iters: 120000       # base.yaml: 20000
+  lr: 6.0e-4
+  min_lr: 6.0e-5
+  warmup_iters: 500
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  eval_interval: 2000     # base.yaml: 500. Evals cost ~13% of time at 500, ~3% at 2000; still 60 points.
+  eval_iters: 100
+  ckpt_interval: 2000     # ~11 min of training at risk if the session dies
+  fp16: true
+  seed: 1337
