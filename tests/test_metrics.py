@@ -81,6 +81,14 @@ def test_illegal_output_is_recorded_as_illegal():
     assert not last.legal and not last.matches_game
 
 
+def test_phantom_capture_is_not_a_legal_output():
+    # 3.Bxb5 claims a capture on an empty square: python-chess's lenient parser would accept it.
+    oracle = OracleModel("\n1-0 1.e4 e5 2.Nf3 Nc6 3.Bxb5\n")
+    last = evaluate_positions(oracle, TOK, [GAME])[-1]
+    assert last.output == "Bxb5"
+    assert not last.legal and not last.matches_game
+
+
 def test_uniform_model_produces_no_legal_moves():
     records = evaluate_positions(UniformModel(TOK.vocab_size), TOK, [GAME])
     assert len(records) == 5
