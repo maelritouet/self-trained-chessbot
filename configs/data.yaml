@@ -4,8 +4,9 @@
 # Lichess monthly dump, "YYYY-MM", or "latest" = most recent complete month on database.lichess.org
 month: latest
 
-# Stop streaming once this many games pass the filters. DECISION: target number of games.
-max_games: 2000000
+# Stop streaming once this many games pass the filters. Decided 2026-11-09: 3M
+# (~1.2B tokens; T4 trains ~100k tokens/s, so ~4B tokens per 11 h session).
+max_games: 3000000
 
 # Both WhiteElo and BlackElo must be >= min_elo. Decided 2026-11-09: 1800.
 min_elo: 1800
