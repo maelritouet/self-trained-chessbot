@@ -1,4 +1,4 @@
-# Chess GPT
+# self-trained-chessbot
 
 A small decoder-only transformer (~10–25M parameters) trained **from scratch** on Lichess game records. It is never told the rules of chess: it only learns to predict the next character of a game's movetext (`1.e4 e5 2.Nf3 Nc6 …`). [python-chess](https://python-chess.readthedocs.io/) acts as the referee.
 
