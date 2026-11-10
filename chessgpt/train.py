@@ -196,12 +196,17 @@ def _append_log(path: Path, row: dict) -> None:
 def train(
     cfg: dict, data_dir: str | Path, out_dir: str | Path, resume: bool = False,
     iters_this_run: int | None = None, max_seconds: float | None = None, device: str | None = None,
+    init_from: str | Path | None = None,
 ) -> dict:
     """Run (or resume) training. Returns {"iter", "best_val", "stopped_early"}.
 
     iters_this_run: stop after this many iterations in this session (checkpoint saved).
     max_seconds:    stop once this much wall time has passed in this session (checkpoint saved).
+    init_from:      a best.pt to fine-tune: its weights and architecture, with a fresh optimizer,
+                    schedule and iteration count (unlike resume). Its vocab must match meta.json.
     """
+    if resume and init_from is not None:
+        raise ValueError("resume and init_from are exclusive: resume a fine-tune with resume alone")
     cfg = copy.deepcopy(cfg)
     mcfg, tcfg = cfg["model"], cfg["train"]
     data_dir, out_dir = Path(data_dir), Path(out_dir)
@@ -223,11 +228,20 @@ def train(
         mcfg = ckpt["config"]["model"]  # architecture must match the saved weights
         if ckpt["config"]["train"] != tcfg:
             print("warning: train config differs from the checkpoint's; using the new one")
+    source = None
+    if init_from is not None:
+        source = torch.load(init_from, map_location="cpu")
+        if source["itos"] != meta["itos"]:
+            raise ValueError(f"vocab of {init_from} differs from {data_dir / 'meta.json'}: "
+                             "build the dataset with build_dataset.py --meta <original meta.json>")
+        mcfg = {**source["model_args"], "dropout": mcfg.get("dropout", 0.0)}
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "config.json").write_text(json.dumps({"model": mcfg, "train": tcfg}, indent=2) + "\n")
 
     torch.manual_seed(tcfg["seed"])
     model = GPT(GPTConfig(**mcfg)).to(device)
+    if source is not None:
+        model.load_state_dict(source["model"])
     optimizer = configure_optimizer(model, tcfg)
     scaler = torch.amp.GradScaler("cuda") if use_fp16 else None
     start_iter, best_val, elapsed_before = 0, float("inf"), 0.0
@@ -324,6 +338,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--data", default="data/processed", help="dir with train.bin, val.bin, meta.json")
     p.add_argument("--out", default="runs/default", help="dir for checkpoints and logs")
     p.add_argument("--resume", action="store_true", help="resume from <out>/ckpt.pt")
+    p.add_argument("--init-from", help="fine-tune: start from this best.pt's weights (fresh optimizer)")
     p.add_argument("--max-hours", type=float, help="stop and checkpoint after this many hours")
     p.add_argument("--iters-this-run", type=int, help="stop and checkpoint after this many iterations")
     p.add_argument("--device", help="cuda / cpu (default: cuda if available)")
@@ -335,7 +350,8 @@ def main(argv=None) -> None:
     cfg = load_config(args.config)
     max_seconds = args.max_hours * 3600 if args.max_hours is not None else None
     summary = train(cfg, args.data, args.out, resume=args.resume,
-                    iters_this_run=args.iters_this_run, max_seconds=max_seconds, device=args.device)
+                    iters_this_run=args.iters_this_run, max_seconds=max_seconds, device=args.device,
+                    init_from=args.init_from)
     print(json.dumps(summary))
 
 

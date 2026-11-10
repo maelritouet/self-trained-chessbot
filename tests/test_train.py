@@ -168,3 +168,49 @@ def test_time_limit_stops_early_and_saves_a_checkpoint(data_dir, tmp_path):
 def test_resume_without_checkpoint_fails(data_dir, tmp_path):
     with pytest.raises(FileNotFoundError):
         train(tiny_cfg(), data_dir, tmp_path / "empty", resume=True)
+
+
+# --- fine-tuning: init_from (decision 012) ----------------------------------------------------
+def test_init_from_starts_from_the_source_weights(data_dir, tmp_path):
+    train(tiny_cfg(), data_dir, tmp_path / "src")
+    # lr 0: AdamW changes nothing (decoupled weight decay is scaled by lr too), so the result
+    # equals whatever the run started from: the source weights, not a fresh random init.
+    train(tiny_cfg(lr=0.0, min_lr=0.0, max_iters=5), data_dir, tmp_path / "ft",
+          init_from=tmp_path / "src" / "best.pt")
+    src = torch.load(tmp_path / "src" / "best.pt")["model"]
+    ft = torch.load(tmp_path / "ft" / "ckpt.pt")["model"]
+    for k in src:
+        assert torch.equal(src[k], ft[k]), k
+
+
+def test_init_from_takes_the_architecture_from_the_source(data_dir, tmp_path):
+    train(tiny_cfg(max_iters=10), data_dir, tmp_path / "src")
+    cfg = tiny_cfg(max_iters=5)
+    cfg["model"]["n_layer"] = 3  # ignored: the weights decide the architecture
+    train(cfg, data_dir, tmp_path / "ft", init_from=tmp_path / "src" / "best.pt")
+    assert torch.load(tmp_path / "ft" / "best.pt")["model_args"]["n_layer"] == 1
+
+
+def test_init_from_is_a_fresh_run_with_its_own_schedule(data_dir, tmp_path):
+    train(tiny_cfg(), data_dir, tmp_path / "src")          # source ran 40 iterations
+    summary = train(tiny_cfg(max_iters=20), data_dir, tmp_path / "ft", init_from=tmp_path / "src" / "best.pt")
+    assert [int(r["iter"]) for r in read_log(tmp_path / "ft")] == [0, 10, 20]
+    assert summary["iter"] == 20
+
+
+def test_init_from_rejects_a_checkpoint_with_another_vocabulary(data_dir, tmp_path):
+    train(tiny_cfg(max_iters=10), data_dir, tmp_path / "src")
+    other = tmp_path / "other"
+    other.mkdir()
+    tok = CharTokenizer.from_text(GAME + "xyz")
+    for f in ("train.bin", "val.bin"):
+        tok.encode_array(GAME * 50).tofile(other / f)
+    tok.save(other / "meta.json", delimiter="\n")
+    with pytest.raises(ValueError, match="vocab"):
+        train(tiny_cfg(max_iters=5), other, tmp_path / "ft", init_from=tmp_path / "src" / "best.pt")
+
+
+def test_init_from_and_resume_cannot_be_combined(data_dir, tmp_path):
+    train(tiny_cfg(max_iters=10), data_dir, tmp_path / "src")
+    with pytest.raises(ValueError, match="init_from"):
+        train(tiny_cfg(), data_dir, tmp_path / "src", resume=True, init_from=tmp_path / "src" / "best.pt")
