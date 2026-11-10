@@ -1,0 +1,36 @@
+# Controlled experiment (decision 009): the base run with a bigger model, at equal compute.
+# Differs from base_11h.yaml in exactly two places: the model shape and max_iters.
+#
+# Shape: 8 layers x 8 heads x 512 wide = 25.2M params (25.8M with position embeddings);
+# head size 64 as in base (384 / 6), so both depth and width grow.
+# Budget: ~202 vs ~92 MFLOP per training token (6N + attention), so ~2.2x base's cost.
+# Base ran 3.93B tokens in 8.6 h (~127k tokens/s incl. evals) -> ~58k tokens/s expected here.
+# 60,000 iterations x 32,768 tokens = 1.97B tokens ≈ 9.5 h, leaving margin in an 11 h session.
+# Run with: kaggle/run.sh --config configs/large_11h.yaml --name large --hours 11
+# If the GPU is slower than estimated, --max-hours stops the run before the cosine ends:
+# check "stopping at iter" in the notebook log before comparing.
+
+model:
+  vocab_size: null        # filled in from meta.json at train time
+  block_size: 1024
+  n_layer: 8              # base: 6
+  n_head: 8               # base: 6
+  n_embd: 512             # base: 384
+  dropout: 0.0
+
+train:
+  batch_size: 32
+  grad_accum_steps: 1
+  max_iters: 60000        # base_11h: 120000
+  lr: 6.0e-4
+  min_lr: 6.0e-5
+  warmup_iters: 500
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  eval_interval: 2000
+  eval_iters: 100
+  ckpt_interval: 2000
+  fp16: true
+  seed: 1337
