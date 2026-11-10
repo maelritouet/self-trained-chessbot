@@ -43,9 +43,9 @@ RATE_LIMIT_WAIT_S = 61  # Lichess API guidance: on HTTP 429, wait a full minute
 
 
 def parse_game_url(url: str) -> str:
-    """'https://lichess.org/787zsVup/black#48' -> '787zsVup'."""
-    path = url.split("#", 1)[0].split("lichess.org/", 1)[1]
-    return path.split("/", 1)[0]
+    """'https://lichess.org/game/787zsVup/black#48' (or without 'game/') -> '787zsVup'."""
+    parts = url.split("#", 1)[0].split("lichess.org/", 1)[1].split("/")
+    return parts[1] if parts[0] == "game" else parts[0]
 
 
 def _key(board: chess.Board) -> tuple:

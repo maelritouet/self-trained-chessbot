@@ -24,11 +24,13 @@ def fen_after(sans):
 
 def row(pid="p1", rating=1500, rd=80, fen=None, moves="g5g2 h1f1", game="abcd1234", ply=9):
     return {"PuzzleId": pid, "FEN": fen or fen_after(GAME[:ply]), "Moves": moves, "Rating": str(rating),
-            "RatingDeviation": str(rd), "GameUrl": f"https://lichess.org/{game}/black#{ply}"}
+            "RatingDeviation": str(rd), "GameUrl": f"https://lichess.org/game/{game}/black#{ply}"}
 
 
 # --- parse_game_url --------------------------------------------------------------------------
 @pytest.mark.parametrize("url", [
+    "https://lichess.org/game/787zsVup/black#48",  # the format in the 2026-11 puzzle CSV
+    "https://lichess.org/game/787zsVup#48",
     "https://lichess.org/787zsVup/black#48",
     "https://lichess.org/787zsVup#48",
     "https://lichess.org/787zsVup",
