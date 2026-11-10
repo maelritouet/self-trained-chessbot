@@ -1,0 +1,37 @@
+# Data pipeline config: download_lichess.py and build_dataset.py.
+# W5 fine-tune data (decision 012): data.yaml with three changes (month, max_games, min_plies).
+# Everything else is decisions 001-007, unchanged; build with --meta data/processed/meta.json.
+
+# Lichess monthly dump, "YYYY-MM", or "latest" = most recent complete month on database.lichess.org
+month: "2026-09"       # W5 fine-tune (decision 012): a month the base data (2026-10) does not contain
+
+# Stop streaming once this many games pass the filters. Decided 2026-11-09: 3M
+# (~1.2B tokens; T4 trains ~100k tokens/s, so ~4B tokens per 11 h session).
+max_games: 600000      # decision 012: ~300M tokens of long games (~500 chars each)
+
+# Both WhiteElo and BlackElo must be >= min_elo. Decided 2026-11-09: 1800.
+min_elo: 1800
+
+# Time controls kept, matched against the PGN Event header ("Rated Blitz game" -> blitz).
+# Decided 2026-11-09: blitz + rapid + classical (no bullet).
+speeds: [blitz, rapid, classical]
+
+# Games with fewer half-moves than this are dropped. Unfinished games (Result "*") are
+# always dropped (decided 2026-11-09): the result-first format needs a real result.
+min_plies: 100          # decision 012: long games only, to train late-game positions
+
+# Termination header values that get a game dropped.
+drop_terminations: ["Abandoned", "Rules infraction"]
+
+# Where the result token ("1-0", "0-1", "1/2-1/2") goes in the movetext:
+#   prefix -> "1-0 1.e4 e5 ..."  (conditioning: prompt with the result you want)
+#   suffix -> "1.e4 e5 ... 1-0"
+#   none   -> "1.e4 e5 ..."
+# Decided 2026-11-09: prefix.
+result_position: prefix
+
+# --- build_dataset.py ---
+# Character placed between games in train.bin / val.bin. Decided 2026-11-09: newline.
+delimiter: "\n"
+val_fraction: 0.01
+seed: 1337
