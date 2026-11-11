@@ -1,0 +1,33 @@
+# W5 fine-tune of the large model on long games (decision 012). Starts from the weights of
+# large_11h.yaml (25.2M params) with a fresh optimizer and schedule (train.py --init-from).
+#
+# Data: data/processed/finetune (2026-09, >= 100 plies, 594k train games, 412.9M tokens,
+# same vocab as the base data), uploaded as the private Kaggle dataset chessgpt-finetune.
+# Length: 12,600 iterations x 32,768 tokens = 413M tokens = one pass. ~60k tokens/s -> ~1.9 h on a T4.
+# LR: 1e-4 -> 1e-5 cosine, 1/6 of the pretraining peak, so it adjusts the model rather than
+#     retraining it. Short warmup: the weights are trained, only the Adam moments start at zero.
+# Run with:
+#   kaggle/run.sh --config configs/finetune_large.yaml --name ft-large --dataset chessgpt-finetune --init-from large.pt
+
+model:
+  # Architecture comes from the --init-from checkpoint (train.py ignores these, except dropout).
+  vocab_size: null
+  block_size: 1024
+  dropout: 0.0
+
+train:
+  batch_size: 32
+  grad_accum_steps: 1
+  max_iters: 12600
+  lr: 1.0e-4
+  min_lr: 1.0e-5
+  warmup_iters: 200
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+  eval_interval: 1000     # 13 points on the fine-tune val set; ~6% of the time
+  eval_iters: 100
+  ckpt_interval: 1000
+  fp16: true
+  seed: 1337
