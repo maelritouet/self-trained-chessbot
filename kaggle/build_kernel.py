@@ -15,7 +15,11 @@ import copy
 import json
 from pathlib import Path
 
-PARAM_KEYS = ("REPO_URL", "GIT_REF", "CONFIG", "RUN_NAME", "MAX_HOURS", "SMOKE_TEST", "RESUME")
+PARAM_KEYS = ("REPO_URL", "GIT_REF", "CONFIG", "RUN_NAME", "MAX_HOURS", "SMOKE_TEST", "RESUME", "INIT_FROM")
+# Fine-tuning (INIT_FROM = a file name such as "large.pt") reads its starting weights from this
+# private dataset of best.pt files (kaggle/push_models.sh). It has no meta.json, so the
+# notebook's "exactly one meta.json under /kaggle/input" lookup still finds the training data.
+MODELS_DATASET = "chessgpt-models"
 KAGGLE_SESSION_HOURS = 12.0
 # Margin under the 12 h hard limit: setup + smoke test + the final evaluation and
 # checkpoint after --max-hours triggers must all fit before Kaggle kills the session.
@@ -41,6 +45,9 @@ def build_kernel(
     if not 0 < params["MAX_HOURS"] <= MAX_TRAIN_HOURS:
         raise ValueError(f"MAX_HOURS must be in (0, {MAX_TRAIN_HOURS}] to finish inside "
                          f"Kaggle's {KAGGLE_SESSION_HOURS:g} h session, got {params['MAX_HOURS']}")
+    if params["RESUME"] and params["INIT_FROM"]:
+        raise ValueError("RESUME and INIT_FROM are exclusive (as in chessgpt.train): "
+                         "resume a fine-tune with RESUME alone")
 
     nb = json.loads(Path(template).read_text())
     nb = copy.deepcopy(nb)
@@ -64,7 +71,7 @@ def build_kernel(
         "enable_tpu": False,
         "enable_internet": True,          # needed for git clone + pip install
         "machine_shape": accelerator,     # P100 is retired on Kaggle; T4 is the default GPU
-        "dataset_sources": [f"{user}/{dataset}"],
+        "dataset_sources": [f"{user}/{dataset}"] + ([f"{user}/{MODELS_DATASET}"] if params["INIT_FROM"] else []),
         # Resume: attach this kernel's previous version output (contains runs/<RUN_NAME>/ckpt.pt).
         "kernel_sources": [f"{user}/{slug}"] if params["RESUME"] else [],
         "competition_sources": [],
@@ -83,12 +90,15 @@ def main(argv=None) -> None:
     p.add_argument("--max-hours", type=float, default=11.0)
     p.add_argument("--no-smoke", action="store_true", help="skip the 30-step GPU smoke test")
     p.add_argument("--resume", action="store_true")
+    p.add_argument("--dataset", default="chessgpt-data", help="private Kaggle dataset with the .bin files")
+    p.add_argument("--init-from", default="", help=f"fine-tune from this file of {MODELS_DATASET}, e.g. large.pt")
     p.add_argument("--template", default=str(Path(__file__).with_name(CODE_FILE)))
     p.add_argument("--out", default="kaggle/build/kernel")
     a = p.parse_args(argv)
     params = dict(REPO_URL=a.repo_url, GIT_REF=a.git_ref, CONFIG=a.config, RUN_NAME=a.run_name,
-                  MAX_HOURS=a.max_hours, SMOKE_TEST=not a.no_smoke, RESUME=a.resume)
-    print(build_kernel(a.template, a.out, params, user=a.user))
+                  MAX_HOURS=a.max_hours, SMOKE_TEST=not a.no_smoke, RESUME=a.resume,
+                  INIT_FROM=a.init_from)
+    print(build_kernel(a.template, a.out, params, user=a.user, dataset=a.dataset))
 
 
 if __name__ == "__main__":

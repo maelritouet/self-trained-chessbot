@@ -2,13 +2,17 @@
 # Push and start a training run on Kaggle (private GPU notebook <user>/chessgpt-train).
 #
 #   kaggle/run.sh [--config configs/base.yaml] [--name base] [--hours 11] [--no-smoke] [--resume]
+#                 [--dataset chessgpt-data] [--init-from large.pt]
+#
+# Fine-tune: --dataset chessgpt-finetune --init-from large.pt starts from that file of the
+# private chessgpt-models dataset (kaggle/push_models.sh) with a fresh optimizer.
 #
 # The notebook checks out the exact commit that is HEAD here, so HEAD must be pushed
 # and the working tree clean: every Kaggle run maps to code anyone can check out.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CONFIG="configs/base.yaml"; NAME="base"; HOURS="11"; EXTRA=()
+CONFIG="configs/base.yaml"; NAME="base"; HOURS="11"; DATASET="chessgpt-data"; INIT_FROM=""; EXTRA=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --config) CONFIG="$2"; shift 2 ;;
@@ -16,6 +20,8 @@ while [[ $# -gt 0 ]]; do
         --hours) HOURS="$2"; shift 2 ;;
         --no-smoke) EXTRA+=(--no-smoke); shift ;;
         --resume) EXTRA+=(--resume); shift ;;
+        --dataset) DATASET="$2"; shift 2 ;;
+        --init-from) INIT_FROM="$2"; shift 2 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -42,9 +48,9 @@ OUT="kaggle/build/kernel"
 rm -rf "$OUT"
 .venv/bin/python kaggle/build_kernel.py --user "$USER_NAME" --repo-url "$REPO_URL" \
     --git-ref "$COMMIT" --config "$CONFIG" --run-name "$NAME" --max-hours "$HOURS" \
-    --out "$OUT" "${EXTRA[@]}"
+    --dataset "$DATASET" --init-from "$INIT_FROM" --out "$OUT" "${EXTRA[@]}"
 
-echo "pushing $USER_NAME/chessgpt-train @ ${COMMIT:0:7}: config=$CONFIG name=$NAME hours=$HOURS ${EXTRA[*]}"
+echo "pushing $USER_NAME/chessgpt-train @ ${COMMIT:0:7}: config=$CONFIG name=$NAME hours=$HOURS dataset=$DATASET${INIT_FROM:+ init-from=$INIT_FROM} ${EXTRA[*]}"
 $KAGGLE kernels push -p "$OUT"
 cat <<EOF
 

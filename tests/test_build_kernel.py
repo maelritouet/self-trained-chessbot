@@ -27,6 +27,7 @@ PARAMS = dict(
     MAX_HOURS=11.0,
     SMOKE_TEST=True,
     RESUME=False,
+    INIT_FROM="",
 )
 
 
@@ -124,3 +125,34 @@ def test_template_without_parameters_cell_is_rejected(tmp_path):
     bad.write_text(json.dumps(nb))
     with pytest.raises(ValueError):
         build_kernel(bad, tmp_path / "out", params(), user="someone")
+
+
+def test_dataset_slug_can_be_chosen(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(), user="someone", dataset="chessgpt-finetune")
+    meta = json.loads((tmp_path / "out" / "kernel-metadata.json").read_text())
+    assert meta["dataset_sources"] == ["someone/chessgpt-finetune"]
+
+
+def test_init_from_attaches_the_models_dataset(template, tmp_path):
+    build_kernel(template, tmp_path / "out", params(INIT_FROM="large.pt"), user="someone",
+                 dataset="chessgpt-finetune")
+    meta = json.loads((tmp_path / "out" / "kernel-metadata.json").read_text())
+    assert meta["dataset_sources"] == ["someone/chessgpt-finetune", "someone/chessgpt-models"]
+    assert meta["kernel_sources"] == []
+    assert param_cell_values(built_notebook(tmp_path / "out"))["INIT_FROM"] == "large.pt"
+
+
+def test_resume_and_init_from_are_exclusive(template, tmp_path):
+    with pytest.raises(ValueError):
+        build_kernel(template, tmp_path / "out", params(RESUME=True, INIT_FROM="large.pt"), user="someone")
+
+
+def test_notebook_passes_init_from_to_smoke_test_and_run(template, tmp_path):
+    """Both train calls must start from the checkpoint, so the smoke test checks that it loads."""
+    build_kernel(template, tmp_path / "out", params(INIT_FROM="large.pt"), user="someone")
+    cells = ["".join(c["source"]) for c in built_notebook(tmp_path / "out")["cells"]
+             if c["cell_type"] == "code" and "python -m chessgpt.train" in "".join(c["source"])]
+    assert len(cells) == 2
+    for src in cells:
+        call = src[src.index("python -m chessgpt.train"):]
+        assert "INIT_ARG" in call[:call.index("\n\n") if "\n\n" in call else None]

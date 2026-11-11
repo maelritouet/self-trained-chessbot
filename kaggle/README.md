@@ -5,8 +5,9 @@ driven from the laptop with `.venv/bin/kaggle`; the token lives in `~/.kaggle/ac
 
 | File | What it does |
 |------|--------------|
-| `push_dataset.sh [data_dir] [msg]` | Uploads `train.bin`, `val.bin`, `meta.json` as the private dataset `<user>/chessgpt-data` (creates it, then adds versions). |
-| `run.sh [--config …] [--name …] [--hours 11] [--no-smoke] [--resume]` | Builds the notebook for the current commit and starts it as `<user>/chessgpt-train`. Refuses dirty trees and unpushed commits. |
+| `push_dataset.sh [data_dir] [msg]` | Uploads `train.bin`, `val.bin`, `meta.json` as the private dataset `<user>/chessgpt-data` (creates it, then adds versions; `KAGGLE_DATASET_SLUG=…` picks another slug). |
+| `push_models.sh name=path …` | Uploads checkpoints as `<name>.pt` in the private dataset `<user>/chessgpt-models`, for `run.sh --init-from`. A new version replaces the file set: pass them all. |
+| `run.sh [--config …] [--name …] [--hours 11] [--no-smoke] [--resume] [--dataset …] [--init-from x.pt]` | Builds the notebook for the current commit and starts it as `<user>/chessgpt-train`. Refuses dirty trees and unpushed commits. |
 | `fetch_outputs.sh [name] [--no-ckpt]` | Downloads `runs/<name>/` (log, best.pt, ckpt.pt) into `runs/kaggle/`. |
 | `train_kaggle.ipynb` | Thin template: clone at the pinned commit → install → find dataset → 30-step GPU smoke test → `python -m chessgpt.train --max-hours …`. |
 | `build_kernel.py` | Fills the template's parameters cell and writes `kernel-metadata.json` (tested in `tests/test_build_kernel.py`). |
@@ -24,6 +25,16 @@ kaggle/fetch_outputs.sh base
 
 Resume (run longer than one 12 h session): `kaggle/run.sh --name base --resume` attaches
 the previous version's output and continues from its `ckpt.pt`. Not yet tried on Kaggle.
+
+Fine-tune (decision 012): train on another dataset, starting from a checkpoint's weights with a
+fresh optimizer. The fine-tune data is its own dataset, attached *instead of* `chessgpt-data`
+(the notebook wants exactly one `meta.json`); the checkpoints dataset has no `meta.json`.
+
+```bash
+KAGGLE_DATASET_SLUG=chessgpt-finetune kaggle/push_dataset.sh data/processed/finetune "long games"
+kaggle/push_models.sh base=runs/kaggle/base-…/runs/base/best.pt large=runs/kaggle/large-…/runs/large/best.pt
+kaggle/run.sh --config configs/finetune_large.yaml --name ft-large --dataset chessgpt-finetune --init-from large.pt
+```
 
 ## What the first run showed (2026-11-09, `--name test --hours 0.5`, 20k-game sample)
 
