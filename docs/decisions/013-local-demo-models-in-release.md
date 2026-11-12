@@ -8,7 +8,7 @@ The project goal said "a self-hosted website to play the bot". The page works lo
 four models (base, large, ft-base, ft-large; decision 009 ships both sizes). The exported ONNX
 files are 49 MB (base, ft-base) and 112 MB (large, ft-large), ~320 MB in all, fp32.
 - Git refuses them: GitHub rejects files over 100 MB, and generated weights stay out of git
- .
+  by design.
 - GitHub Pages has the same 100 MB file limit. GitHub release files can't be fetched by a page on
   another site (no CORS headers). Cloudflare Pages caps files at 25 MB.
 

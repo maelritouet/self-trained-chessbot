@@ -13,7 +13,7 @@ Map of the code (B = batch, T = sequence length, C = n_embd, H = n_head, D = C /
     n_layer x Block:  x = x + attn(ln_1(x));  x = x + mlp(ln_2(x))
   --ln_f--> (B,T,C) --lm_head (tied to token emb)--> logits (B,T,V)
 
-Questions to be able to answer:
+Design questions:
   - Why divide attention scores by sqrt(D)?
   - What breaks if the causal mask is missing, and how would the loss curve look?
   - Where do the ~12 * n_layer * n_embd^2 parameters come from?

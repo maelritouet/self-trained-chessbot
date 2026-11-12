@@ -16,7 +16,7 @@ Map of one iteration:
     unscale -> clip grad norm -> optimizer step (skipped by GradScaler on inf/NaN) -> scaler update
     every ckpt_interval (and when stopping): atomic save of ckpt.pt
 
-Questions to be able to answer:
+Design questions:
   - Why warmup? What happens to Adam's early updates without it?
   - Why does GradScaler exist, and why must gradients be unscaled before clipping?
   - What has to be saved so a resumed run is indistinguishable from an uninterrupted one?

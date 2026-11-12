@@ -24,7 +24,7 @@ Definitions, and why:
   (no legal move within its retries) count as losses AND are reported separately, so a weak
   score can be told apart from an illegal-move problem.
 
-Questions to be able to answer:
+Design questions:
   - Why teacher forcing with real histories rather than self-play for the legal-move rate?
   - Why greedy decoding for metrics, when the bot samples at temperature > 0 when playing?
   - Why must puzzle evaluation rebuild the full game history instead of starting from a FEN?

@@ -32,7 +32,7 @@ Exact SAN (option 2), everywhere: the player, the metrics and the web page.
 - The legal-move rate is stricter than it was. On the base model (2026-11-10, 20 val games,
   1,784 positions): **95.1%** strict. 23 of the 88 illegal outputs would pass a lenient parse
   (wrong or missing `x`, `+` or disambiguation on a real move), so lenient would give about
-  96.4%. The session-1 figure of 81% (test model) was measured leniently and is not comparable.
+  96.4%. The first figure of 81% (test model) was measured leniently and is not comparable.
 - Errors split into "wrong chess" (unreachable or illegal move, ignored check: 55 of 88) and
   "wrong notation" (33 of 88: 23 lenient-parsable, 10 missing disambiguation). Report both
   when discussing the metric.
