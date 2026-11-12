@@ -41,3 +41,15 @@ tokens (~0.6 of the base run's tokens, ~9.5 h estimated vs the base run's 8.6 h)
 - If the T4 is slower than estimated, `--max-hours` stops the run before the cosine ends and
   the comparison is no longer clean. Check `stopping at iter` in the notebook log.
 - The winner becomes the model that is fine-tuned in W5 and served on the web page.
+
+## Outcome (2026-11-12)
+Large wins on every metric at equal compute. It ran all 60,000 iterations (no early stop), so
+the comparison is clean.
+- Val loss 0.3856 → 0.3660; illegal outputs 357 → 189 (−47%); legal rate 95.6 → 97.7%
+  (85 → 95% at moves 81-90); same move as the human 40.7 → 44.2%.
+- Puzzles 8.0 → 11.3%; Stockfish Skill 0 score 0.06 → 0.17; forfeits 49 → 39 of 150.
+- Equal-token check: base at 1.97B tokens was at 0.4182 (its LR not yet annealed, which
+  flatters large).
+
+Follow-up (2026-11-11): ship **both** in the web demo, large as the default. Both were
+fine-tuned (012), since the fine-tune was cheap.

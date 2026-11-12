@@ -43,3 +43,15 @@ Option 1.
   `1/2-1/2`, which may make the model more drawish when prompted with a draw. Check the result
   counts in the built dataset.
 - If val loss on the original val set rises clearly, lower the LR or mix in normal games.
+
+## Outcome (2026-11-12)
+A mixed result, kept as is: no second fine-tune run.
+- Data: 594k games, 412.9M tokens, 16.9% draws (vs 5.8% in the base data).
+- Long-game val loss improved (0.3852 → 0.3747 base, 0.3639 → 0.3535 large), but both models
+  forgot a little of the original val set (+0.0076 / +0.0084) and solved fewer puzzles
+  (8.0 → 6.8%, 11.3 → 8.3%, mostly the easy buckets).
+- Large: forfeits 39 → 28 of 150 and the best legal rate (97.8%), but its Skill 0 score fell
+  0.17 → 0.08. Late-game legality did not measurably change (~40 positions past move 80).
+- Base: no benefit (forfeits 49 → 52).
+- Likely causes: drawn long games hold fewer decisive tactics, and the small model has less
+  spare capacity. 50 games per level is noisy.
