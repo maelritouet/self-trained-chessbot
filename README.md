@@ -60,6 +60,13 @@ Four models: **base** and **large** trained from scratch on the same 3M games, a
 | ft-base | 13.0 | 9.5 | 6.5 | 4.0 | 1.0 |
 | ft-large | 15.5 | 11.5 | 6.5 | 4.0 | 4.0 |
 
+**Training curves.** Left: base vs large from scratch (train ≈ val: no overfitting). Right: the fine-tunes, with val loss on the long-game val set.
+
+<p>
+  <img src="docs/img/curves_base_vs_large.png" alt="Loss and learning-rate curves for base and large" width="49%">
+  <img src="docs/img/curves_finetune.png" alt="Loss and learning-rate curves for the two fine-tunes" width="49%">
+</p>
+
 How these were measured:
 - **Legal move** = the model's text is exactly the SAN of a legal move ([decision 008](docs/decisions/008-legal-means-exact-san.md)). "Same move as the human" is on the same positions.
 - **Stockfish** = Stockfish 19 at UCI Skill Level 0, 1 and 2, 50,000 nodes per move, 50 games per level with alternating colours ([decision 011](docs/decisions/011-stockfish-levels.md)). Score = (wins + ½ draws) / games. The model gets 6 tries per move (greedy, then 5 sampled); after 6 illegal outputs it **forfeits** the game. With only 50 games per level, score differences of a few hundredths are noise.
