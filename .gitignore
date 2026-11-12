@@ -43,3 +43,6 @@ kaggle/build/
 web/models/
 web/node_modules/
 !web/test/fixtures/tiny/model.onnx
+
+# Release staging (scripts/fetch_models.py --stage)
+dist/

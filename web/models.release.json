@@ -1,0 +1,62 @@
+{
+  "repo": "maelritouet/self-trained-chessbot",
+  "tag": "v1.0",
+  "models": [
+    {
+      "id": "large",
+      "label": "Large (25.2M params)",
+      "files": {
+        "model.onnx": {
+          "sha256": "3638cac83bd2fab983fb5bfa632b598bfc3f2d29950aa560c7b0ea9f678ab1bb",
+          "size": 111856030
+        },
+        "meta.json": {
+          "sha256": "b690fbe83c0a75b08c4b552bba5995e9d2f4c9f53efd70675edb95344f3ea363",
+          "size": 493
+        }
+      }
+    },
+    {
+      "id": "ft-large",
+      "label": "Large, fine-tuned on long games",
+      "files": {
+        "model.onnx": {
+          "sha256": "1c35899bdc666eebd926b442b92b9aa50fa6d01cbac3b1f7f131ab6c3595b5a0",
+          "size": 111856030
+        },
+        "meta.json": {
+          "sha256": "64e2dae12bb8fea18b4563ed941e59ed7f4182eb9115686c0faac2d3eb3ea99a",
+          "size": 492
+        }
+      }
+    },
+    {
+      "id": "base",
+      "label": "Base (10.7M params)",
+      "files": {
+        "model.onnx": {
+          "sha256": "d9973af7ccdf102b92932159ee4caa4c084dd92d470c6a2208ad9cf07466f43b",
+          "size": 50825346
+        },
+        "meta.json": {
+          "sha256": "b4de1cd2d627679a3e8b173b93bd67b79565b553f7cdc97d73f278dacb2db52b",
+          "size": 494
+        }
+      }
+    },
+    {
+      "id": "ft-base",
+      "label": "Base, fine-tuned on long games",
+      "files": {
+        "model.onnx": {
+          "sha256": "1199aee6bb92090b3a9c139a1d29dbf1b8e8ebed63fa32a9955b2dcda50ad268",
+          "size": 50825346
+        },
+        "meta.json": {
+          "sha256": "ebacebaa13cf278061fe4c074962ea53d5b58c629583478aa9da6b41951d253e",
+          "size": 492
+        }
+      }
+    }
+  ]
+}
