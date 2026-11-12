@@ -28,6 +28,16 @@
       <p id="status" class="status" role="status" aria-live="polite">Loading the model…</p>
     </section>
 
+    <section class="about" aria-labelledby="about-title">
+      <h2 id="about-title">About this bot</h2>
+      <ul>
+        <li>It was trained from scratch on 3 million Lichess games between players rated 1800+, by predicting the next character of the move list. It has 10.7M (Base) or 25.2M (Large) parameters. The fine-tuned versions saw 594k extra long games.</li>
+        <li>A move counts only if it writes <em>exactly</em> the notation of a legal move. Otherwise the attempt is crossed out and it tries again, up to five more times; if all fail, its highest-scored legal move is played and marked <code>*</code>.</li>
+        <li>The top five come from scoring every legal move by how likely the model is to write it.</li>
+      </ul>
+      <p>Code, results and the story of how it was built: <a href="https://github.com/maelritouet/self-trained-chessbot">github.com/maelritouet/self-trained-chessbot</a>.</p>
+    </section>
+
     <aside class="sheet" aria-label="Game and model">
       <div class="controls">
         <div class="segmented" role="radiogroup" aria-label="Play as">

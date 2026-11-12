@@ -333,7 +333,7 @@ el.modelSelect.addEventListener("change", async () => {
 function showError(err) {
   console.error(err);
   el.status.textContent = `The model could not be loaded (${err.message}). `
-    + "Export one with scripts/export_onnx.py into web/models/<name>/ and list it in web/models/models.json.";
+    + "Download the models first: python3 scripts/fetch_models.py (see the README).";
 }
 
 // --- start ---------------------------------------------------------------------------------------
