@@ -5,18 +5,22 @@ Node tests in `web/test/` (`cd web && npm test`, see `web/README.md`).
 
 ## Written
 
-Written together with the code they test, **test-first**: each test was seen failing
-against a stub before the implementation existed, and each file was mutation-checked (deliberate bugs put into the code to confirm a test catches
-them). Two weak tests found that way were fixed in their own commits.
+Written together with the code they test, **test-first**: each test was seen failing against
+a stub before the implementation existed, and each file was mutation-checked (deliberate bugs
+put into the code to confirm a test catches them). Weak tests found that way were fixed in
+their own commits. 137 tests in all (counting parametrized cases).
 
 | File | Tests | Covers |
 |------|------:|--------|
 | `test_model.py` | 14 | GPT shapes, loss, initial loss ≈ ln(V), causal masking both ways, manual vs fused attention, dropout in eval mode, hand-derived parameter count, overfitting, `choose_move` integration |
-| `test_train.py` | 15 | LR schedule, weight-decay groups, seeded `get_batch`, gradient accumulation, end-to-end run, bit-identical resume, time limit |
+| `test_train.py` | 20 | LR schedule, weight-decay groups, seeded `get_batch`, gradient accumulation, end-to-end run, bit-identical resume, time limit, `--init-from` (weights, architecture, fresh schedule, vocab check) |
 | `test_metrics.py` | 20 | position evaluation with an oracle model, legal-move and match rates, move-number buckets, puzzles (incl. an alternative mate), score vs engine with forfeits |
 | `test_player.py` | 14 | move legality is exact SAN only (no phantom captures/checks, long algebraic or `--` null move) |
+| `test_legal_rate.py` | 11 | classifying illegal outputs (illegal move, ignores check, notation, ambiguous, not a move), loading val games |
+| `test_puzzles.py` | 20 | game-URL parsing, rebuilding the history up to the puzzle FEN, stratified seeded sampling, Lichess API batching and rate limits |
+| `test_vs_stockfish.py` | 13 | game loop endings (mate, threefold, max plies), forfeits, model player (greedy first, sampled retries), Stockfish skill setting |
 | `test_export_onnx.py` | 6 | ONNX logits match PyTorch for any batch and length, I/O names, `meta.json` |
-| `test_build_kernel.py` | 9 | Kaggle notebook parameters and metadata |
+| `test_build_kernel.py` | 13 | Kaggle notebook parameters and metadata, `--dataset`, `--init-from`, resume |
 | `test_plot_curves.py` | 6 | reading `log.csv`, best val point, PNG output, CLI |
 
 ## Still to write
@@ -63,3 +67,11 @@ Proposed cases for the data pipeline, which has no tests yet. Suggested file nam
 - `get_batch`: a `.bin` shorter than `block_size + 2` raises `ValueError` (`test_train.py`).
 - `choose_move` on a finished game (e.g. after Fool's mate) raises `ValueError` (`test_player.py`).
 - `choose_move` with `temperature=0` is deterministic; a fixed `generator` seed is reproducible (`test_player.py`).
+
+### Model download [`test_fetch_models.py`] (`scripts/fetch_models.py`; checked by hand on 2026-11-12 against a local server)
+- `asset_name`: `("large", "model.onnx")` → `large.onnx`, `("large", "meta.json")` → `large.meta.json`.
+- A served file with the right bytes is saved, and `models.json` lists the fetched models in manifest order.
+- A served file with wrong bytes (or wrong size) raises, and leaves neither the file nor a `.part` behind.
+- A file already present with the right checksum is not downloaded again; one with the wrong checksum is.
+- `--only` with an id not in the manifest raises before downloading anything.
+- `--stage` copies to flat names and writes a manifest whose checksums match the copies; a missing export raises.
