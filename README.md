@@ -84,7 +84,7 @@ What the results say:
 
 ## How it was built
 
-A personal project to learn AI engineering. Every choice that mattered is written down with its options and reasons in [docs/decisions/](docs/decisions/), and each week in [JOURNAL.md](JOURNAL.md).
+A personal project to learn AI engineering (project 1 of 5). Every choice that mattered is written down with its options and reasons in [docs/decisions/](docs/decisions/), and each step in [JOURNAL.md](JOURNAL.md).
 
 | Date | What happened |
 |---|---|
