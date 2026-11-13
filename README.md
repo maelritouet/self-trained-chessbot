@@ -8,17 +8,21 @@ A small GPT (10.7M and 25.2M parameters) trained **from scratch** on 3 million L
 
 ## Play it
 
-The page runs the model in your browser (ONNX Runtime Web); nothing is sent anywhere. You need Python 3 and git.
+**[maelritouet.github.io/self-trained-chessbot](https://maelritouet.github.io/self-trained-chessbot/)**
+
+The page runs the model in your browser (ONNX Runtime Web); nothing is sent anywhere. The first visit downloads the Base model (51 MB) from the [Hugging Face Hub](https://huggingface.co/Mrenaissance/self-trained-chessbot), checks its SHA-256 and keeps it in the browser, so later visits start at once ([decision 014](docs/decisions/014-public-demo-pages-and-hugging-face.md)).
+
+To run it locally instead (offline, or with your own exported model), you need Python 3 and git:
 
 ```bash
 git clone https://github.com/maelritouet/self-trained-chessbot.git
 cd self-trained-chessbot
-python3 scripts/fetch_models.py               # the 4 models, ~320 MB (or: --only base, 49 MB)
-cd web && python3 -m http.server 8765         # then open http://localhost:8765/
+python3 scripts/fetch_models.py               # the 4 models, ~320 MB (or: --only base, 51 MB)
+cd web && python3 -m http.server 8765         # then open http://localhost:8765/?local
 ```
 
-The models come from the [v1.0 release](https://github.com/maelritouet/self-trained-chessbot/releases/tag/v1.0) and are checked against SHA-256 sums ([decision 013](docs/decisions/013-local-demo-models-in-release.md)). In the page:
-- **Model** picks one of the four: Large (default), Base, and each fine-tuned on long games.
+`fetch_models.py` downloads the same files from the [v1.0 release](https://github.com/maelritouet/self-trained-chessbot/releases/tag/v1.0), checked against the same SHA-256 sums ([decision 013](docs/decisions/013-local-demo-models-in-release.md)). Without `?local` the local page still loads from Hugging Face, and falls back to the local copy if it can't reach it. In the page:
+- **Model** picks one of the four: Base (default, the quickest to download), Large, and each fine-tuned on long games.
 - **Temperature** 0 always plays the model's favourite move; higher values take more risks.
 - **What it reads and writes** shows the text it sees and the move it is typing. If it writes something that isn't exactly a legal move, the attempt is crossed out in red and it tries again (up to 5 more times; then its best-scored legal move is played, marked `*`).
 - **Its top five moves** scores every legal move by how likely the model is to write it.
@@ -114,13 +118,14 @@ What I'd keep from it:
 | [011](docs/decisions/011-stockfish-levels.md) | "Stockfish levels 1–3" = UCI Skill Level 0, 1, 2 |
 | [012](docs/decisions/012-finetune-long-games.md) | Fine-tune on long games for late-game legality |
 | [013](docs/decisions/013-local-demo-models-in-release.md) | The demo runs locally; models ship as a GitHub release |
+| [014](docs/decisions/014-public-demo-pages-and-hugging-face.md) | A public demo: the page on GitHub Pages, the models on the Hugging Face Hub |
 
 ## Repository layout
 
 | Path | Contents |
 |------|----------|
 | `configs/` | `data.yaml` (download, filters, split), `data_finetune.yaml`, model and training configs (`base_11h.yaml`, `large_11h.yaml`, `finetune_*.yaml`) |
-| `scripts/` | `download_lichess.py`, `build_dataset.py`, `plot_curves.py`, `export_onnx.py`, `fetch_models.py`, `make_parity_fixtures.py` |
+| `scripts/` | `download_lichess.py`, `build_dataset.py`, `plot_curves.py`, `export_onnx.py`, `fetch_models.py`, `push_hf.py`, `fp16_onnx.py`, `make_parity_fixtures.py` |
 | `chessgpt/` | `movetext.py`, `tokenizer.py`, `model.py`, `train.py`, `player.py` (the move function) |
 | `eval/` | `metrics.py` (definitions), `legal_rate.py`, `puzzles.py`, `vs_stockfish.py` (CLIs) |
 | `kaggle/` | thin training notebook + CLI scripts ([kaggle/README.md](kaggle/README.md)) |
