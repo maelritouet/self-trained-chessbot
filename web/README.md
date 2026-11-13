@@ -10,32 +10,52 @@ ONNX Runtime Web and chess.js loaded from jsDelivr at pinned versions.
 | `js/app.js` | DOM wiring: board, controls, model loading, the "pen" strip | by playing it (see below) |
 | `index.html`, `css/style.css` | The page | |
 
-## Get the models
+## Where the models come from
 
-The four models (base, large and their fine-tunes, ~320 MB in all) are attached to the
-GitHub release `v1.0` (decision 013). From the repo root:
+`models.release.json` (committed) is the model menu, in order (the first loads by default), with
+each file's size and SHA-256. The page (decision 014):
+
+1. downloads `https://huggingface.co/<hf_repo>/resolve/main/<id>/{meta.json,model.onnx}`
+   (the public model repo `Mrenaissance/self-trained-chessbot`), with a progress bar;
+2. checks size and SHA-256 (`crypto.subtle`, so only on https or localhost);
+3. keeps the checked bytes in Cache Storage (`chessbot-models-v1`), keyed by URL and checksum,
+   so the next visit starts without a download and a new model version is a new key;
+4. if Hugging Face can't be reached, tries the same model from `models/<id>/`.
+
+With `?local` in the URL it skips Hugging Face and lists the models in `models/models.json`.
+
+The deployed page is `index.html`, `css/`, `js/` and `models.release.json`, copied by
+`.github/workflows/pages.yml` on every push to main that touches `web/`.
+
+## Run locally (offline, or with your own model)
+
+The same four models (~320 MB) are attached to the GitHub release `v1.0` (decision 013). From the
+repo root:
 
 ```bash
 python3 scripts/fetch_models.py               # all four, checked against web/models.release.json
-python3 scripts/fetch_models.py --only base   # or just one (49 MB)
+python3 scripts/fetch_models.py --only base   # or just one (51 MB)
+cd web && python3 -m http.server 8765         # then open http://localhost:8765/?local
 ```
 
-This fills `web/models/<id>/{model.onnx,meta.json}` and writes `web/models/models.json`, the
-model menu (first entry loads by default). `web/models/` is gitignored.
-
-To add your own model instead, export a checkpoint and list it in `models.json` by hand:
+This fills `web/models/<id>/{model.onnx,meta.json}` and writes `web/models/models.json`.
+`web/models/` is gitignored. To add your own model, export a checkpoint and list it in
+`models.json` by hand (models not in the manifest load without a checksum):
 
 ```bash
 python scripts/export_onnx.py runs/<run>/best.pt --out web/models/<name>
 ```
 
-## Run locally
+(ES modules and `fetch` need a server; opening `index.html` as a file won't work.)
+
+## Publish new models
 
 ```bash
-cd web && python3 -m http.server 8765    # then open http://localhost:8765/
+python scripts/fetch_models.py --stage dist/release --tag v1.1 base="Base (10.7M params)" ...
+python scripts/push_hf.py          # uploads web/models/<id>/ and docs/model_card.md (hf auth login first)
 ```
 
-(ES modules and `fetch` need a server; opening `index.html` as a file won't work.)
+Upload the staged files to the GitHub release too, so both sources match the manifest.
 
 ## Tests
 
@@ -63,8 +83,10 @@ scroll at phone width (390 px).
 - Speed: every legal move is scored over the whole prompt, with no cache between calls. In
   Chromium (single-threaded WASM), base replies in 0.1–0.6 s up to move 11, then 1.4–9 s;
   large takes about twice as long.
-- Size: the models are fp32 (49 MB base, 112 MB large); fp16 would halve that but needs its
-  own parity check.
-- Multi-threaded WASM needs cross-origin isolation headers, which `python -m http.server`
-  doesn't send, so it runs on one thread. `app.js` uses up to 4 threads when the page is
+- Size: the models are fp32 (51 MB base, 112 MB large). `scripts/fp16_onnx.py` makes
+  fp16-weight copies (24 / 53 MB): on the 14 parity positions every model played the same greedy
+  move, but probabilities moved by up to 0.4% relative, above the parity test's 0.01%, so they
+  aren't used.
+- Multi-threaded WASM needs cross-origin isolation headers, which neither GitHub Pages nor
+  `python -m http.server` sends, so it runs on one thread. `app.js` uses up to 4 threads when the page is
   isolated.
