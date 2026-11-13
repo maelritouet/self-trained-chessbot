@@ -113,7 +113,9 @@ def stage(out: Path, tag: str, specs: list[str]) -> None:
             files[filename] = {"sha256": sha256(src), "size": src.stat().st_size}
         models.append({"id": model_id, "label": label, "files": files})
         print(f"  staged {model_id}")
-    MANIFEST.write_text(json.dumps({"repo": REPO, "tag": tag, "models": models}, indent=2) + "\n")
+    hf_repo = json.loads(MANIFEST.read_text()).get("hf_repo") if MANIFEST.exists() else None
+    manifest = {"repo": REPO, "tag": tag, **({"hf_repo": hf_repo} if hf_repo else {}), "models": models}
+    MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"{out}: upload these files to release {tag}; manifest written to {MANIFEST.relative_to(ROOT)}")
 
 

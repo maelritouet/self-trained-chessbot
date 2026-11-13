@@ -19,7 +19,7 @@ const FILES = "abcdefgh";
 
 const $ = (id) => document.getElementById(id);
 const el = {
-  board: $("board"), status: $("status"), promotion: $("promotion"),
+  board: $("board"), status: $("status"), progress: $("load-progress"), promotion: $("promotion"),
   newGame: $("new-game"), colorButtons: document.querySelectorAll(".segmented button"),
   modelField: $("model-field"), modelSelect: $("model-select"),
   temperature: $("temperature"), tempValue: $("temp-value"),
@@ -37,15 +37,17 @@ const state = {
   fallbackPlies: new Set(),
   thinking: false,
   gameId: 0,              // bumps on new game, so a stale bot reply is dropped
+  models: [],             // the menu: [{id, label, base, files}]
+  loadId: 0,              // bumps on each model load, so a slower earlier download is dropped
 };
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 // --- model loading ---------------------------------------------------------------------------
-async function fetchWithProgress(url, onProgress) {
+async function fetchWithProgress(url, onProgress, size) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  const total = Number(res.headers.get("content-length")) || 0;
+  const total = size || Number(res.headers.get("content-length")) || 0;
   const reader = res.body.getReader();
   const chunks = [];
   let received = 0;
@@ -62,16 +64,62 @@ async function fetchWithProgress(url, onProgress) {
   return bytes;
 }
 
-async function loadModel(id) {
-  const base = `models/${id}/`;
-  const meta = await (await fetch(base + "meta.json")).json();
+// Models live on the Hugging Face Hub (decision 014); models.release.json lists them with their
+// SHA-256. A local copy from scripts/fetch_models.py is the fallback, or forced with ?local.
+const MANIFEST = "models.release.json";
+const FORCE_LOCAL = new URLSearchParams(location.search).has("local");
+const CACHE_NAME = "chessbot-models-v1";
+const hfBase = (repo, id) => `https://huggingface.co/${repo}/resolve/main/${id}/`;
+const localBase = (id) => `models/${id}/`;
+
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Throw unless bytes match the manifest entry (skipped for models not in the manifest, and
+ *  where the page isn't a secure context, since crypto.subtle needs https or localhost). */
+async function verify(bytes, info, name) {
+  if (!info) return;
+  if (bytes.length !== info.size) throw new Error(`${name}: got ${bytes.length} bytes, expected ${info.size}`);
+  if (crypto.subtle && (await sha256Hex(bytes)) !== info.sha256) throw new Error(`${name}: checksum mismatch`);
+}
+
+/** Bytes of url, from the browser cache if a checked copy is there, else downloaded,
+ *  checked and cached. The cache key holds the checksum, so a new model version is a new key. */
+async function fetchChecked(url, info, onProgress) {
+  const key = info ? `${url}?sha256=${info.sha256}` : null;
+  const cache = key && self.caches ? await caches.open(CACHE_NAME).catch(() => null) : null;
+  const hit = cache && (await cache.match(key));
+  if (hit) {
+    const bytes = new Uint8Array(await hit.arrayBuffer());
+    try { await verify(bytes, info, url); return { bytes, cached: true }; } catch { await cache.delete(key); }
+  }
+  const bytes = await fetchWithProgress(url, onProgress, info?.size);
+  await verify(bytes, info, url);
+  if (cache) await cache.put(key, new Response(bytes)).catch(() => {}); // full disk: just don't cache
+  return { bytes, cached: false };
+}
+
+function showProgress(fraction) {
+  el.progress.hidden = fraction === null;
+  if (fraction !== null) el.progress.value = fraction;
+}
+
+async function loadModel(entry) {
+  const files = entry.files || {};
+  const meta = JSON.parse(new TextDecoder().decode(
+    (await fetchChecked(entry.base + "meta.json", files["meta.json"], () => {})).bytes));
   const mb = (n) => (n / 1e6).toFixed(0);
-  const bytes = await fetchWithProgress(base + "model.onnx", (got, total) => {
+  showProgress(0);
+  const { bytes, cached } = await fetchChecked(entry.base + "model.onnx", files["model.onnx"], (got, total) => {
+    showProgress(total ? got / total : null);
     el.status.textContent = total
-      ? `Downloading the model: ${mb(got)} of ${mb(total)} MB`
+      ? `Downloading the model (once; it is kept in your browser): ${mb(got)} of ${mb(total)} MB`
       : `Downloading the model: ${mb(got)} MB`;
   });
-  el.status.textContent = "Starting the model…";
+  showProgress(null);
+  el.status.textContent = cached ? "Starting the model (from your browser's cache)…" : "Starting the model…";
   const session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] });
   const run = onnxRunner(ort, session);
   // Yield a frame before each forward pass so the pen strip can repaint between characters.
@@ -79,10 +127,36 @@ async function loadModel(id) {
   return { runModel, tokenizer: new Tokenizer(meta.itos), meta };
 }
 
-async function loadModelList() {
-  const res = await fetch("models/models.json");
-  if (!res.ok) throw new Error("models/models.json not found");
+async function fetchJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return res.json();
+}
+
+/** The model menu: [{id, label, base, files}] where base is the folder URL and files the
+ *  checksums (absent for a hand-added local model). */
+async function loadModelList() {
+  const manifest = await fetchJson(MANIFEST);
+  if (FORCE_LOCAL) return localModelList(manifest);
+  return manifest.models.map((m) => ({ ...m, base: hfBase(manifest.hf_repo, m.id) }));
+}
+
+/** Models from web/models/models.json (written by scripts/fetch_models.py, or by hand). */
+async function localModelList(manifest) {
+  const byId = new Map(manifest.models.map((m) => [m.id, m]));
+  return (await fetchJson("models/models.json"))
+    .map((m) => ({ ...m, base: localBase(m.id), files: byId.get(m.id)?.files }));
+}
+
+/** Load entry; if the Hub can't be reached, try the same model from a local copy. */
+async function loadModelWithFallback(entry) {
+  try {
+    return await loadModel(entry);
+  } catch (err) {
+    if (entry.base === localBase(entry.id)) throw err;
+    console.warn(`Hugging Face download failed (${err.message}); trying the local copy.`);
+    return loadModel({ ...entry, base: localBase(entry.id) }).catch(() => { throw err; });
+  }
 }
 
 // --- board -----------------------------------------------------------------------------------
@@ -324,16 +398,20 @@ el.temperature.addEventListener("input", () => { el.tempValue.textContent = Numb
 el.modelSelect.addEventListener("change", async () => {
   state.gameId += 1;
   state.model = null;
+  const load = ++state.loadId;
   try {
-    state.model = await loadModel(el.modelSelect.value);
+    const model = await loadModelWithFallback(state.models.find((m) => m.id === el.modelSelect.value));
+    if (load !== state.loadId) return; // another model was picked while this one downloaded
+    state.model = model;
     await newGame();
-  } catch (err) { showError(err); }
+  } catch (err) { if (load === state.loadId) showError(err); }
 });
 
 function showError(err) {
   console.error(err);
-  el.status.textContent = `The model could not be loaded (${err.message}). `
-    + "Download the models first: python3 scripts/fetch_models.py (see the README).";
+  showProgress(null);
+  el.status.textContent = `The model could not be loaded (${err.message}). Check your connection and `
+    + "reload, or play offline: python3 scripts/fetch_models.py, then open the page with ?local (see the README).";
 }
 
 // --- start ---------------------------------------------------------------------------------------
@@ -341,10 +419,13 @@ function showError(err) {
   state.game = new Game({ Chess, humanColor: state.humanColor });
   renderAll();
   try {
-    const models = await loadModelList();
-    el.modelSelect.replaceChildren(...models.map((m) => new Option(m.label, m.id)));
-    el.modelField.hidden = models.length < 2;
-    state.model = await loadModel(models[0].id);
+    state.models = await loadModelList();
+    el.modelSelect.replaceChildren(...state.models.map((m) => new Option(m.label, m.id)));
+    el.modelField.hidden = state.models.length < 2;
+    const load = ++state.loadId;
+    const model = await loadModelWithFallback(state.models[0]);
+    if (load !== state.loadId) return;
+    state.model = model;
     await newGame();
   } catch (err) { showError(err); }
 })();
